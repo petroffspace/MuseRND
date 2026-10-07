@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MUseRND</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5' cy='12' r='3' fill='%235b5bd6'/%3E%3Cpath d='M7 12V2l7 2v3l-5-1.5V12' fill='%235b5bd6'/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>MUseRND</h1>
+  <p class="tag">music evolved from <code>/dev/urandom</code></p>
+</header>
+
+<main>
+  <aside id="controls" class="panel">
+    <section>
+      <h2>Composition</h2>
+      <div class="row2">
+        <label>Genre <select id="genre"></select></label>
+        <label>Style <select id="mood"></select></label>
+      </div>
+      <details id="moodBox">
+        <summary>Mood sliders</summary>
+        <div id="sliders"></div>
+      </details>
+      <div class="row2">
+        <label>Scale <select id="scale"></select></label>
+        <label>Key <select id="tonic"></select></label>
+      </div>
+      <label>Tempo <span class="val" id="bpmVal"></span>
+        <span class="inline">
+          <input type="range" id="bpm" min="40" max="220" step="1">
+          <label class="check"><input type="checkbox" id="bpmAuto" checked> auto</label>
+        </span>
+      </label>
+      <label>Duration <span class="val" id="secVal"></span>
+        <input type="range" id="seconds" min="10" max="600" step="5" value="60">
+      </label>
+      <div class="parts">Parts
+        <label class="check"><input type="checkbox" name="part" value="chords" checked> chords</label>
+        <label class="check"><input type="checkbox" name="part" value="bass" checked> bass</label>
+        <label class="check"><input type="checkbox" name="part" value="drums" checked> drums</label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Instruments
+        <span class="h2tools">
+          <select id="randMode" title="Where the dice pick from">
+            <option value="suggested">suggested</option>
+            <option value="any">any GM</option>
+          </select>
+          <button id="randAll" class="ghost" title="Randomise all instruments">🎲 all</button>
+          <button id="resetIns" class="ghost" title="Genre defaults">reset</button>
+        </span>
+      </h2>
+      <div id="instruments"></div>
+      <div id="extras"></div>
+      <div class="addx">
+        <button id="addExtra" class="ghost" title="Add a counter-melody, arpeggio, pad, stabs or percussion part">+ Add instrument</button>
+        <span id="partCount" class="muted"></span>
+      </div>
+    </section>
+
+    <section>
+      <label>Search quality <select id="quality"></select></label>
+      <label class="check taste"><input type="checkbox" id="useTaste"> Use my ratings</label>
+      <p id="tasteInfo" class="hint"></p>
+      <button id="generate" class="primary">Generate</button>
+      <p class="hint">Every note, chord, bass line and drum hit is random bytes, evolved until a music-theory detector likes them.</p>
+    </section>
+  </aside>
+
+  <section id="stage">
+    <div id="progress" class="panel hidden">
+      <div class="phead">
+        <strong id="pstatus">Starting…</strong>
+        <button id="cancel" class="ghost">Cancel</button>
+      </div>
+      <div class="bar"><div id="pbar"></div></div>
+      <div class="pgrid">
+        <canvas id="chart" height="120"></canvas>
+        <div id="pparts"></div>
+      </div>
+    </div>
+
+    <div id="song" class="panel hidden">
+      <div class="shead">
+        <div>
+          <h2 id="stitle"></h2>
+          <p id="smeta" class="muted"></p>
+          <p id="slineage" class="muted hidden"></p>
+        </div>
+        <div class="sside">
+          <span class="rate">
+            <button id="like" class="ghost" title="I like it (teaches your taste)">👍</button>
+            <button id="dislike" class="ghost" title="Not for me (teaches your taste)">👎</button>
+          </span>
+          <div id="sscore" class="chips"></div>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button id="play" class="primary round" title="Play / pause (space)">▶</button>
+        <button id="stop" class="ghost round" title="Stop">■</button>
+        <span id="time" class="mono">0:00 / 0:00</span>
+        <span id="loading" class="muted hidden">loading sounds…</span>
+        <span class="spacer"></span>
+        <span id="mutes"></span>
+        <label class="vol">🔊 <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8"></label>
+      </div>
+
+      <div class="sounds">
+        <span class="muted">Sounds</span>
+        <select id="sound" title="Sounds used for playback (exports are MIDI either way)"></select>
+        <button id="sfUpload" class="ghost" title="Upload your own SoundFont (.sf2, .sf3, .sfogg, .dls)">Upload SoundFont…</button>
+        <button id="sfDelete" class="ghost hidden" title="Delete this SoundFont from the server">delete</button>
+        <input type="file" id="sfFile" accept=".sf2,.sf3,.sfogg,.dls" hidden>
+        <span id="sfStatus" class="muted"></span>
+      </div>
+
+      <div id="rollwrap"><canvas id="roll"></canvas></div>
+      <p id="chords" class="chords mono"></p>
+
+      <div class="actions">
+        <span class="muted">Save</span>
+        <a id="dlMid" class="button" download>MIDI</a>
+        <a id="dlXml" class="button" download>MusicXML</a>
+        <a id="dlGen" class="button ghost" download title="Reload or re-render later">genome</a>
+      </div>
+
+      <div class="bars">
+        <span class="muted">Selected bars</span>
+        <input type="number" id="lockFrom" min="1" value="1" title="First selected bar">
+        –
+        <input type="number" id="lockTo" min="1" value="1" title="Last selected bar">
+        <button id="lockWhole" class="ghost" title="Select the whole song">whole song</button>
+        <span class="hint">Drag across the piano roll to select. Locks below apply to these bars.</span>
+      </div>
+
+      <div class="edit">
+        <span class="muted">Transpose</span>
+        <select id="transpose" title="Shift the pitched parts"></select>
+        <span class="muted">lock 🔒</span>
+        <label class="check"><input type="checkbox" name="tlock" value="melody"> melody</label>
+        <label class="check"><input type="checkbox" name="tlock" value="chords"> chords</label>
+        <label class="check"><input type="checkbox" name="tlock" value="bass"> bass</label>
+        <span id="tlockX" class="xlocks"></span>
+        <button id="applyTranspose" class="ghost">Apply</button>
+        <span class="sep"></span>
+        <label class="inl">Tempo <input type="number" id="songBpm" min="40" max="220" title="Same bars, new speed"> bpm</label>
+        <label class="check" title="The selected bars keep their current tempo"><input type="checkbox" id="tempoLock"> lock 🔒 selected bars</label>
+        <button id="applyTempo" class="ghost">Apply</button>
+        <button id="resetEdit" class="ghost" title="Back to the generated key and tempo">reset</button>
+        <p id="tlockHint" class="hint hidden"></p>
+        <p id="tempoHint" class="hint hidden"></p>
+      </div>
+
+      <div class="edit">
+        <span class="muted">Instruments</span>
+        <button id="reinstrument" class="ghost" title="Keep the notes, change the sounds to the ones selected on the left">Apply selected instruments</button>
+        <span class="muted">lock 🔒</span>
+        <label class="check"><input type="checkbox" name="ilock" value="melody"> melody</label>
+        <label class="check"><input type="checkbox" name="ilock" value="chords"> chords</label>
+        <label class="check"><input type="checkbox" name="ilock" value="bass"> bass</label>
+        <label class="check"><input type="checkbox" name="ilock" value="drums"> drums</label>
+        <span id="ilockX" class="xlocks"></span>
+        <span class="muted">in selected bars</span>
+        <p id="ilockHint" class="hint hidden"></p>
+      </div>
+
+      <div class="vary">
+        <span class="muted">Variation · lock 🔒</span>
+        <label class="check"><input type="checkbox" name="keep" value="melody" checked> melody</label>
+        <label class="check"><input type="checkbox" name="keep" value="chords"> chords</label>
+        <label class="check"><input type="checkbox" name="keep" value="bass"> bass</label>
+        <label class="check"><input type="checkbox" name="keep" value="drums"> drums</label>
+        <span id="keepX" class="xlocks"></span>
+        <span class="muted">in selected bars</span>
+        <select id="amount" title="How far the unlocked music moves">
+          <option value="subtle">subtle change</option>
+          <option value="moderate" selected>moderate change</option>
+          <option value="fresh">fresh parts</option>
+        </select>
+        <button id="vary" class="primary">Make variation</button>
+        <p class="hint vhint">Locked parts keep every note in the selected bars; everything else is varied.</p>
+      </div>
+    </div>
+
+    <div id="empty" class="panel empty">
+      <p>Pick a genre and press <b>Generate</b>. Generation takes about the search-quality time; you can keep listening to library songs meanwhile.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Library</h2>
+      <ul id="library"></ul>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

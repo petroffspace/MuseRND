@@ -1,0 +1,8 @@
+# build output
+/musernd
+/musernd.new
+/rpi/
+
+# user data: songs made in the web UI and uploaded SoundFonts
+/LIBRARY/
+/SOUNDFONTS/
